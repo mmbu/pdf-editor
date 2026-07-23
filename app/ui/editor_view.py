@@ -6,9 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
-    QInputDialog,
     QLabel,
-    QMenu,
     QMessageBox,
     QScrollArea,
     QToolBar,
@@ -18,7 +16,7 @@ from PySide6.QtWidgets import (
 
 from app.core.session import DocumentSession
 from app.pdf.editor import replace_text_span
-from app.pdf.models import TextSpan
+from app.pdf.scan_detector import is_page_scanned
 from app.shell.tool_registry import register_tool
 from app.ui.base_tool_view import BaseToolView
 from app.ui.page_widget import PageWidget
@@ -74,7 +72,7 @@ class EditorView(BaseToolView):
 
     def _show_placeholder(self) -> None:
         self._clear_pages()
-        label = QLabel("Откройте PDF или перетащите файл сюда")
+        label = QLabel("Откройте PDF или перетащите файл сюда.\nКликните по слову — редактирование прямо на странице.")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("color: #666; font-size: 16px; padding: 48px;")
         self.pages_layout.addWidget(label)
@@ -102,7 +100,17 @@ class EditorView(BaseToolView):
         try:
             self.session.open(path)
             self._render_all_pages()
-            self.set_status(f"Открыт: {path.name}")
+            scanned_pages = sum(
+                1
+                for index in range(self.session.pdf.page_count)
+                if is_page_scanned(self.session.pdf.page(index))
+            )
+            if scanned_pages:
+                self.set_status(
+                    f"Открыт: {path.name}. OCR-страниц: {scanned_pages}"
+                )
+            else:
+                self.set_status(f"Открыт: {path.name}")
         except Exception as exc:
             QMessageBox.critical(self, "Ошибка", f"Не удалось открыть PDF:\n{exc}")
 
@@ -110,24 +118,18 @@ class EditorView(BaseToolView):
         self._clear_pages()
         for index in range(self.session.pdf.page_count):
             widget = PageWidget(self.session.pdf, index, self.ZOOM, self)
-            widget.span_clicked.connect(self._on_span_clicked)
+            widget.word_edit_committed.connect(self._on_word_edit_committed)
             self.page_widgets.append(widget)
             self.pages_layout.addWidget(widget)
         self._update_undo_actions()
 
-    def _on_span_clicked(self, page_index: int, span: TextSpan) -> None:
-        new_text, ok = QInputDialog.getText(
-            self,
-            "Редактирование текста",
-            f"Шрифт: {span.font_name}, размер: {span.font_size:.1f}",
-            text=span.text,
-        )
-        if not ok or new_text == span.text:
+    def _on_word_edit_committed(self, page_index: int, word: TextWord, new_text: str) -> None:
+        if new_text == word.text:
             return
 
         try:
             page = self.session.pdf.page(page_index)
-            warning = replace_text_span(page, span, new_text)
+            warning = replace_text_span(page, word, new_text)
             self.session.record_change()
             self.page_widgets[page_index].refresh()
             message = "Текст изменён"

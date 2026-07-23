@@ -1,13 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
+from pathlib import Path
 
 block_cipher = None
+
+tessdata = Path("resources/tessdata")
+datas = []
+if tessdata.exists():
+    datas = [(str(tessdata), "resources/tessdata")]
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[],
-    hiddenimports=['fitz'],
+    datas=datas,
+    hiddenimports=['fitz', 'pytesseract', 'PIL'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

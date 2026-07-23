@@ -4,8 +4,10 @@ from pathlib import Path
 
 import fitz
 
-from app.pdf.extractor import extract_text_spans
-from app.pdf.models import TextSpan
+from app.pdf.extractor import extract_text_spans, extract_text_words
+from app.pdf.models import TextSpan, TextWord
+from app.pdf.ocr_service import ocr_page_words
+from app.pdf.scan_detector import is_page_scanned
 
 
 class PdfDocument:
@@ -41,6 +43,15 @@ class PdfDocument:
 
     def get_spans(self, page_index: int) -> list[TextSpan]:
         return extract_text_spans(self.page(page_index), page_index)
+
+    def get_words(self, page_index: int) -> list[TextWord]:
+        page = self.page(page_index)
+        words = extract_text_words(page, page_index)
+        if words:
+            return words
+        if is_page_scanned(page):
+            return ocr_page_words(page, page_index)
+        return words
 
     def save_as(self, path: Path) -> None:
         if self.doc is None:
