@@ -4,6 +4,8 @@ from pathlib import Path
 
 import fitz
 
+from app.core.pdf_errors import PdfUserError, open_pdf_safe
+
 from app.pdf.extractor import extract_text_spans, extract_text_words
 from app.pdf.models import TextSpan, TextWord
 from app.pdf.ocr_service import ocr_page_words
@@ -20,7 +22,7 @@ class PdfDocument:
     def open(self, path: Path) -> None:
         self.close()
         self.path = path
-        self.doc = fitz.open(str(path))
+        self.doc = open_pdf_safe(path)
 
     def close(self) -> None:
         if self.doc is not None:

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.core.pdf_errors import PdfUserError, format_pdf_error
+
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -91,8 +93,10 @@ class SplitView(BaseToolView):
                 "Готово",
                 f"Создано {len(files)} PDF-файлов в:\n{output}",
             )
+        except PdfUserError as exc:
+            QMessageBox.warning(self, "PDF", str(exc))
         except Exception as exc:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось разъединить PDF:\n{exc}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось разъединить PDF:\n{format_pdf_error(exc)}")
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasUrls():

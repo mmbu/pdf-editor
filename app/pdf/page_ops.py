@@ -4,6 +4,8 @@ from pathlib import Path
 
 import fitz
 
+from app.core.pdf_errors import open_pdf_safe
+
 
 def delete_page(doc: fitz.Document, index: int) -> None:
     if index < 0 or index >= len(doc):
@@ -23,7 +25,7 @@ def insert_pages(
     source_path: Path,
     page_numbers: list[int] | None = None,
 ) -> None:
-    source = fitz.open(str(source_path))
+    source = open_pdf_safe(source_path)
     try:
         if page_numbers is None:
             doc.insert_pdf(source, start_at=at_index)
@@ -45,7 +47,7 @@ def merge_documents(paths: list[Path]) -> fitz.Document:
 
     result = fitz.open()
     for path in paths:
-        source = fitz.open(str(path))
+        source = open_pdf_safe(path)
         try:
             result.insert_pdf(source)
         finally:
@@ -55,7 +57,7 @@ def merge_documents(paths: list[Path]) -> fitz.Document:
 
 def split_document(source_path: Path, output_dir: Path) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
-    doc = fitz.open(str(source_path))
+    doc = open_pdf_safe(source_path)
     outputs: list[Path] = []
 
     try:

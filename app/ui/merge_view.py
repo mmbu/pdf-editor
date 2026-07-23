@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from app.core.pdf_errors import PdfUserError, format_pdf_error
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QFileDialog,
@@ -93,8 +93,10 @@ class MergeView(BaseToolView):
             merged.close()
             self.set_status(f"Объединено {len(paths)} файлов → {file_path}")
             QMessageBox.information(self, "Готово", f"Сохранено:\n{file_path}")
+        except PdfUserError as exc:
+            QMessageBox.warning(self, "PDF", str(exc))
         except Exception as exc:
-            QMessageBox.critical(self, "Ошибка", f"Не удалось объединить PDF:\n{exc}")
+            QMessageBox.critical(self, "Ошибка", f"Не удалось объединить PDF:\n{format_pdf_error(exc)}")
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasUrls():

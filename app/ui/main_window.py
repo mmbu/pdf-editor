@@ -3,13 +3,15 @@ from __future__ import annotations
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QMainWindow, QStackedWidget, QStatusBar
+from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtWidgets import QMainWindow, QMessageBox, QStackedWidget, QStatusBar
 
 from app.pdf.image_converter import is_image_path
 from app.shell.home_screen import HomeScreen
 from app.shell.tool_registry import get_tools
-import app.tools  # noqa: F401 — регистрация инструментов
 from app.ui.convert_view import ConvertView
+from app.ui.styles import SHORTCUTS_HELP
+import app.tools  # noqa: F401 — регистрация инструментов
 
 
 class MainWindow(QMainWindow):
@@ -36,6 +38,23 @@ class MainWindow(QMainWindow):
 
         self.stack.setCurrentWidget(self.home)
         self.setAcceptDrops(True)
+        self._build_menu()
+
+    def _build_menu(self) -> None:
+        nav_menu = self.menuBar().addMenu("Навигация")
+        home_action = QAction("На главную", self)
+        home_action.setShortcut(QKeySequence("Ctrl+H"))
+        home_action.triggered.connect(self.show_home)
+        nav_menu.addAction(home_action)
+
+        help_menu = self.menuBar().addMenu("Справка")
+        shortcuts_action = QAction("Горячие клавиши", self)
+        shortcuts_action.setShortcut(QKeySequence("F1"))
+        shortcuts_action.triggered.connect(self._show_shortcuts_help)
+        help_menu.addAction(shortcuts_action)
+
+    def _show_shortcuts_help(self) -> None:
+        QMessageBox.information(self, "Горячие клавиши", SHORTCUTS_HELP.strip())
 
     def show_home(self) -> None:
         self.stack.setCurrentWidget(self.home)
@@ -58,6 +77,13 @@ class MainWindow(QMainWindow):
             widget.add_images([path])
         elif path is not None and hasattr(widget, "source_path"):
             widget.source_path.setText(str(path))
+
+    def keyPressEvent(self, event) -> None:
+        if event.key() == Qt.Key.Key_Escape and self.stack.currentWidget() is not self.home:
+            self.show_home()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def dragEnterEvent(self, event) -> None:
         if not event.mimeData().hasUrls():

@@ -75,7 +75,10 @@ class HomeScreen(QWidget):
         header.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header.setStyleSheet("font-size: 28px; font-weight: 700; margin-bottom: 8px;")
 
-        hint = QLabel("Выберите инструмент или перетащите PDF / изображение в окно")
+        hint = QLabel(
+            "Выберите инструмент или перетащите PDF / изображение в окно\n"
+            "F1 — горячие клавиши · Ctrl+H — на главную · Esc — назад"
+        )
         hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
         hint.setStyleSheet("font-size: 13px; color: #666; margin-bottom: 24px;")
 

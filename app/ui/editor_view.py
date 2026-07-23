@@ -14,8 +14,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app.core.pdf_errors import PdfUserError
 from app.core.session import DocumentSession
 from app.pdf.editor import replace_text_span
+from app.pdf.models import TextWord
 from app.pdf.scan_detector import is_page_scanned
 from app.shell.tool_registry import register_tool
 from app.ui.base_tool_view import BaseToolView
@@ -40,10 +42,12 @@ class EditorView(BaseToolView):
         self.content.addWidget(toolbar)
 
         open_action = QAction("Открыть", self)
+        open_action.setShortcut(QKeySequence.StandardKey.Open)
         open_action.triggered.connect(lambda: self.open_file())
         toolbar.addAction(open_action)
 
         save_action = QAction("Сохранить как", self)
+        save_action.setShortcut(QKeySequence.StandardKey.SaveAs)
         save_action.triggered.connect(self.save_file)
         toolbar.addAction(save_action)
 
@@ -111,6 +115,8 @@ class EditorView(BaseToolView):
                 )
             else:
                 self.set_status(f"Открыт: {path.name}")
+        except PdfUserError as exc:
+            QMessageBox.warning(self, "PDF", str(exc))
         except Exception as exc:
             QMessageBox.critical(self, "Ошибка", f"Не удалось открыть PDF:\n{exc}")
 
