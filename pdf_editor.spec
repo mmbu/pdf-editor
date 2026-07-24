@@ -8,10 +8,18 @@ datas = []
 if tessdata.exists():
     datas = [(str(tessdata), "resources/tessdata")]
 
+tesseract_exe = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+binaries = []
+if tesseract_exe.exists():
+    tess_dir = tesseract_exe.parent
+    binaries.append((str(tesseract_exe), "tesseract"))
+    for dll in tess_dir.glob("*.dll"):
+        binaries.append((str(dll), "tesseract"))
+
 a = Analysis(
     ['main.py'],
     pathex=[],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=['fitz', 'pytesseract', 'PIL'],
     hookspath=[],

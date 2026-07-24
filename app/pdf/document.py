@@ -51,8 +51,11 @@ class PdfDocument:
         words = extract_text_words(page, page_index)
         if words:
             return words
-        if is_page_scanned(page):
-            return ocr_page_words(page, page_index)
+        try:
+            if is_page_scanned(page):
+                return ocr_page_words(page, page_index)
+        except Exception:
+            pass
         return words
 
     def save_as(self, path: Path) -> None:

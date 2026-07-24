@@ -30,6 +30,7 @@ def _configure_tesseract() -> None:
         pytesseract.pytesseract.tesseract_cmd = os.environ["TESSERACT_CMD"]
     else:
         candidates = [
+            _project_root() / "tesseract" / "tesseract.exe",
             Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
             Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
         ]
@@ -39,7 +40,7 @@ def _configure_tesseract() -> None:
                 break
 
     if TESSDATA_DIR.exists():
-        os.environ["TESSDATA_PREFIX"] = str(TESSDATA_DIR.parent)
+        os.environ["TESSDATA_PREFIX"] = str(TESSDATA_DIR)
 
 
 def _tesseract_config() -> str:
@@ -86,48 +87,51 @@ def detect_rtl(text: str) -> bool:
 
 
 def ocr_page_words(page: fitz.Page, page_index: int, dpi: int = 200) -> list[TextWord]:
-    if not is_tesseract_available():
-        return []
+    try:
+        if not is_tesseract_available():
+            return []
 
-    _configure_tesseract()
-    pix = page.get_pixmap(dpi=dpi, alpha=False)
-    image = Image.open(io.BytesIO(pix.tobytes("png")))
+        _configure_tesseract()
+        pix = page.get_pixmap(dpi=dpi, alpha=False)
+        image = Image.open(io.BytesIO(pix.tobytes("png")))
 
-    scale_x = page.rect.width / pix.width
-    scale_y = page.rect.height / pix.height
-    lang = _lang_string()
+        scale_x = page.rect.width / pix.width
+        scale_y = page.rect.height / pix.height
+        lang = _lang_string()
 
-    data = pytesseract.image_to_data(
-        image,
-        lang=lang,
-        output_type=pytesseract.Output.DICT,
-        config=_tesseract_config(),
-    )
-
-    words: list[TextWord] = []
-    count = len(data["text"])
-    for index in range(count):
-        text = (data["text"][index] or "").strip()
-        conf = int(float(data["conf"][index])) if str(data["conf"][index]).isdigit() else -1
-        if not text or conf < 40:
-            continue
-
-        x = float(data["left"][index]) * scale_x
-        y = float(data["top"][index]) * scale_y
-        w = float(data["width"][index]) * scale_x
-        h = float(data["height"][index]) * scale_y
-        bbox = fitz.Rect(x, y, x + w, y + h)
-
-        words.append(
-            TextWord(
-                page_index=page_index,
-                text=text,
-                bbox=bbox,
-                font_name="helv",
-                font_size=max(h * 0.85, 8.0),
-                color=0,
-                flags=0,
-                origin=(bbox.x0, bbox.y1),
-            )
+        data = pytesseract.image_to_data(
+            image,
+            lang=lang,
+            output_type=pytesseract.Output.DICT,
+            config=_tesseract_config(),
         )
-    return words
+
+        words: list[TextWord] = []
+        count = len(data["text"])
+        for index in range(count):
+            text = (data["text"][index] or "").strip()
+            conf = int(float(data["conf"][index])) if str(data["conf"][index]).isdigit() else -1
+            if not text or conf < 40:
+                continue
+
+            x = float(data["left"][index]) * scale_x
+            y = float(data["top"][index]) * scale_y
+            w = float(data["width"][index]) * scale_x
+            h = float(data["height"][index]) * scale_y
+            bbox = fitz.Rect(x, y, x + w, y + h)
+
+            words.append(
+                TextWord(
+                    page_index=page_index,
+                    text=text,
+                    bbox=bbox,
+                    font_name="helv",
+                    font_size=max(h * 0.85, 8.0),
+                    color=0,
+                    flags=0,
+                    origin=(bbox.x0, bbox.y1),
+                )
+            )
+        return words
+    except Exception:
+        return []
