@@ -7,10 +7,15 @@ import sys
 from pathlib import Path
 
 import fitz
-import pytesseract
-from PIL import Image
 
 from app.pdf.models import TextWord
+
+try:
+    import pytesseract
+    from PIL import Image
+    _HAS_TESSERACT = True
+except ImportError:
+    _HAS_TESSERACT = False
 
 DEFAULT_LANGS = ("rus", "eng", "heb")
 HEBREW_RE = re.compile(r"[\u0590-\u05FF]")
@@ -50,6 +55,8 @@ def _tesseract_config() -> str:
 
 
 def is_tesseract_available() -> bool:
+    if not _HAS_TESSERACT:
+        return False
     try:
         _configure_tesseract()
         pytesseract.get_tesseract_version()

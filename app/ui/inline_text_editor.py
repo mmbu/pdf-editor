@@ -5,7 +5,6 @@ from PySide6.QtGui import QColor, QFont, QKeyEvent
 from PySide6.QtWidgets import QLineEdit
 
 from app.pdf.models import TextWord
-from app.pdf.ocr_service import detect_rtl
 
 
 class InlineTextEditor(QLineEdit):
@@ -48,7 +47,13 @@ class InlineTextEditor(QLineEdit):
             """
         )
 
-        if detect_rtl(word.text):
+        try:
+            from app.pdf.ocr_service import detect_rtl
+            is_rtl = detect_rtl(word.text)
+        except Exception:
+            is_rtl = False
+
+        if is_rtl:
             self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
             self.setAlignment(Qt.AlignmentFlag.AlignRight)
         else:

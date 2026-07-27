@@ -8,7 +8,6 @@ from app.core.pdf_errors import PdfUserError, open_pdf_safe
 
 from app.pdf.extractor import extract_text_spans, extract_text_words
 from app.pdf.models import TextSpan, TextWord
-from app.pdf.ocr_service import ocr_page_words
 from app.pdf.scan_detector import is_page_scanned
 
 
@@ -53,6 +52,7 @@ class PdfDocument:
             return words
         try:
             if is_page_scanned(page):
+                from app.pdf.ocr_service import ocr_page_words
                 return ocr_page_words(page, page_index)
         except Exception:
             pass

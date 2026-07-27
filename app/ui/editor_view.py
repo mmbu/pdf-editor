@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QFileDialog,
+    QInputDialog,
     QLabel,
     QMessageBox,
     QScrollArea,
@@ -18,6 +19,7 @@ from app.core.pdf_errors import PdfUserError
 from app.core.session import DocumentSession
 from app.pdf.editor import replace_text_span
 from app.pdf.models import TextWord
+from app.pdf.page_ops import delete_page, insert_pages
 from app.pdf.scan_detector import is_page_scanned
 from app.shell.tool_registry import register_tool
 from app.ui.base_tool_view import BaseToolView
@@ -60,6 +62,16 @@ class EditorView(BaseToolView):
         self.redo_action.setShortcut(QKeySequence.StandardKey.Redo)
         self.redo_action.triggered.connect(self.redo)
         toolbar.addAction(self.redo_action)
+
+        toolbar.addSeparator()
+
+        delete_page_action = QAction("Удалить страницу", self)
+        delete_page_action.triggered.connect(self._delete_current_page)
+        toolbar.addAction(delete_page_action)
+
+        insert_page_action = QAction("Вставить из PDF…", self)
+        insert_page_action.triggered.connect(self._insert_pages)
+        toolbar.addAction(insert_page_action)
 
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
@@ -192,6 +204,56 @@ class EditorView(BaseToolView):
     def _update_undo_actions(self) -> None:
         self.undo_action.setEnabled(self.session.can_undo())
         self.redo_action.setEnabled(self.session.can_redo())
+
+    def _delete_current_page(self) -> None:
+        if not self.session.is_open:
+            return
+        if self.session.pdf.page_count <= 1:
+            QMessageBox.warning(self, "Удаление", "Нельзя удалить единственную страницу.")
+            return
+
+        count = self.session.pdf.page_count
+        page_num, ok = QInputDialog.getInt(
+            self, "Удалить страницу",
+            f"Номер страницы (1–{count}):", 1, 1, count,
+        )
+        if not ok:
+            return
+
+        try:
+            delete_page(self.session.pdf.doc, page_num - 1)
+            self.session.record_change()
+            self._render_all_pages()
+            self.set_status(f"Страница {page_num} удалена")
+        except Exception as exc:
+            QMessageBox.critical(self, "Ошибка", str(exc))
+
+    def _insert_pages(self) -> None:
+        if not self.session.is_open:
+            QMessageBox.information(self, "Вставка", "Сначала откройте PDF-файл.")
+            return
+
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "PDF для вставки", "", "PDF файлы (*.pdf)")
+        if not file_path:
+            return
+
+        count = self.session.pdf.page_count
+        after, ok = QInputDialog.getInt(
+            self, "Вставить после страницы",
+            f"Вставить после страницы (0 = в начало, {count} = в конец):",
+            count, 0, count,
+        )
+        if not ok:
+            return
+
+        try:
+            insert_pages(self.session.pdf.doc, after, Path(file_path))
+            self.session.record_change()
+            self._render_all_pages()
+            self.set_status("Страницы вставлены")
+        except Exception as exc:
+            QMessageBox.critical(self, "Ошибка", f"Не удалось вставить страницы:\n{exc}")
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasUrls():
